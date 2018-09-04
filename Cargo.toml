@@ -1,0 +1,11 @@
+[package]
+name = "other_rustcrawl"
+version = "0.1.0"
+authors = ["a.bozzanoschwedhel"]
+
+[dependencies]
+hyper = "0.12.9"
+tokio-core = "0.1.17"
+futures = "0.1.23"
+regex = "1.0.4"
+url = "1.7.1"
