@@ -4,9 +4,9 @@
     "client_threads":1,
     "timeout":2000,
     "max_body_len":20000000,
-    "buffer_size":100,
-    "max_urls_per_html":10,
-    "max_url_hosts_per_html":4,
+    "buffer_size":10,
+    "max_urls_per_html":100,
+    "max_url_hosts_per_html":20,
     "files_to_gather":[
     {
         "mimetype":"text/css",
@@ -24,6 +24,42 @@
         "mimetype":"image/png",
         "file_prefix":"image",
         "file_extension":"png",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/gif",
+        "file_prefix":"image",
+        "file_extension":"gif",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/jpeg",
+        "file_prefix":"image",
+        "file_extension":"jpeg",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/tiff",
+        "file_prefix":"image",
+        "file_extension":"tiff",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/bmp",
+        "file_prefix":"image",
+        "file_extension":"bmp",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/x-icon",
+        "file_prefix":"image",
+        "file_extension":"ico",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/svg+xml",
+        "file_prefix":"image",
+        "file_extension":"svg",
         "folder_name":"output"
     }]
 }

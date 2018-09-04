@@ -54,7 +54,7 @@ pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync
 
     let re=regex::Regex::new("(?:href=|src=|url=)[\"']?([^\"' <>]*)").unwrap();
     let mut url_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![1238967,4567654]);
-    let mut file_bloom_filter=bloom_filter::BloomFilter::new(vec![1238967,4567654]);
+    let mut file_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![1238967,4567654]);
     for work in work_receiver.iter(){
         match work {
             Work::Html(url,bytes) => {
