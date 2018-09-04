@@ -21,6 +21,7 @@
 \node [entity_thread] at (-10,-1) (Reporter) {Reporter};
 \node [entity_outside] at (-10,-3) (Report) {Report};
 \node [entity_outside] at (2,-4) (Files) {Files};
+\node [entity_struct] at (6,-2) (Bloom Filter) {Bloom Filter};
 
 
 \draw[arrow] (Reservoir) -- node[sloped, anchor=center, above] {\scriptsize{stream}} (Client);
@@ -32,14 +33,15 @@
 \draw[arrow] (Stats) -- node[anchor=center, above] {\scriptsize{owns}} (Reporter);
 \draw[arrow] (Config File) -- node[anchor=center, left] {\scriptsize{read}} (Config);
 
+\draw[arrow] (Worker) to [bend left=10] node[anchor=center, above] {\scriptsize{call}} (Bloom Filter);
+\draw[arrow] (Bloom Filter) to [bend left=10] node[anchor=center, below] {\scriptsize{return}} (Worker);
 
-
-\draw[arrow] (Reservoir) -- node[anchor=center, above] {\scriptsize{ref}} (Stats);
-\draw[arrow] (Client) -- node[anchor=center, above] {\scriptsize{ref}} (Stats);
+\draw[arrow] (Reservoir) -- node[sloped, anchor=center, above] {\scriptsize{ref}} (Stats);
+\draw[arrow] (Client) -- node[sloped, anchor=center, above] {\scriptsize{ref}} (Stats);
 \draw[arrow] (Worker) to [bend left=45] node[anchor=center, above] {\scriptsize{ref}} (Stats);
 
 
-\draw[arrow] (Config) to [bend left=20] node[anchor=center, left] {\scriptsize{clone}} (Worker);
+\draw[arrow] (Config) to [bend left=20] node[anchor=center, right] {\scriptsize{clone}} (Worker);
 \draw[arrow] (Config) to [bend right=20] node[anchor=center, left] {\scriptsize{clone}} (Client);
 \draw[arrow] (Config) -- node[anchor=center, left, xshift=-.2cm] {\scriptsize{clone}} (Reporter);
 
