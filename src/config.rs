@@ -46,6 +46,10 @@ impl Config {
         assert!(config.files_to_gather.iter().all(|file_config| file_config.file_extension.len()>0));
         assert!(config.files_to_gather.iter().all(|file_config| file_config.folder_name.len()>0));
 
+        assert!(config.files_to_gather.iter().all(|file_config| !file_config.file_extension.contains("/")));
+        assert!(config.files_to_gather.iter().all(|file_config| !file_config.file_prefix.contains("/")));
+
+
         sync::Arc::new(config)
     }
 }

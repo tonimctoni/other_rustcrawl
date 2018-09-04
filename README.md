@@ -4,4 +4,4 @@ My other crawler written in rust was aweful. While I am still learning, this one
 
 
 ## Usage
-Still unusable.
+Set configuration in `config.json` and run.

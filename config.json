@@ -1,11 +1,11 @@
 {
-    "initial_urls": ["http:\/\/cssdb.co"],
+    "initial_urls": ["http://cssdb.co"],
     "report_period": 5000,
     "client_threads":1,
     "timeout":2000,
     "max_body_len":20000000,
-    "buffer_size":2,
-    "max_urls_per_html":100,
+    "buffer_size":100,
+    "max_urls_per_html":10,
     "max_url_hosts_per_html":4,
     "files_to_gather":[
     {

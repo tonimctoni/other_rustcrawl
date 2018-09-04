@@ -32,6 +32,7 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
     let max_body_len=config.max_body_len;
     let buffer_size=config.buffer_size;
     let desired_mimetypes: Vec<String>=config.files_to_gather.iter().map(|file_config| file_config.mimetype.clone()).collect();
+    let desired_mimetypes=sync::Arc::new(desired_mimetypes);
     drop(config);
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
