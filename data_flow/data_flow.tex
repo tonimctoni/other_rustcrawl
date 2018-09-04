@@ -30,7 +30,7 @@
 
 \draw[arrow] (Worker) -- node[anchor=center, left] {\scriptsize{write}} (Files);
 \draw[arrow] (Reporter) -- node[anchor=center, left] {\scriptsize{write}} (Report);
-\draw[arrow] (Stats) -- node[anchor=center, above] {\scriptsize{owns}} (Reporter);
+\draw[arrow] (Stats) -- node[anchor=center, above] {\scriptsize{ref}} (Reporter);
 \draw[arrow] (Config File) -- node[anchor=center, left] {\scriptsize{read}} (Config);
 
 \draw[arrow] (Worker) to [bend left=10] node[anchor=center, above] {\scriptsize{call}} (Bloom Filter);
