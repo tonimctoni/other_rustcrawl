@@ -1,0 +1,29 @@
+{
+    "initial_urls": ["http:\/\/cssdb.co"],
+    "report_period": 5000,
+    "client_threads":1,
+    "timeout":2000,
+    "max_body_len":20000000,
+    "buffer_size":2,
+    "max_urls_per_html":100,
+    "max_url_hosts_per_html":4,
+    "files_to_gather":[
+    {
+        "mimetype":"text/css",
+        "file_prefix":"css",
+        "file_extension":"css",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"text/plain",
+        "file_prefix":"text",
+        "file_extension":"txt",
+        "folder_name":"output"
+    },
+    {
+        "mimetype":"image/png",
+        "file_prefix":"image",
+        "file_extension":"png",
+        "folder_name":"output"
+    }]
+}

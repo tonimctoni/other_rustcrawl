@@ -8,7 +8,8 @@ use url;
 use std::collections::VecDeque;
 use std::sync;
 use std::str::FromStr;
-
+use std::thread;
+use std::time;
 
 
 const URL_RESERVOIR_STARTING_CAPACITY: usize = 1<<20;
@@ -38,8 +39,8 @@ impl UrlReservoir {
         match self.url_deque.lock(){
             Err(e) => panic!(format!("add_html_urls tried to get a poisoned lock: {:?}", e)),
             Ok(mut url_deque) => {
+                url_deque.extend(url_vec);
                 self.stats.urlreservoir_size.store(url_deque.len(), sync::atomic::Ordering::Relaxed);
-                url_deque.extend(url_vec)
             },
         }
 
@@ -101,8 +102,17 @@ impl Stream for UrlReservoirUrlUriStream {
     fn poll(&mut self) -> Result<futures::Async<Option<Self::Item>>, Self::Error>{
         match self.url_reservoir.try_get_url_and_uri() {
             Ok(urluri) => Ok(futures::Async::Ready(Some(urluri))),
-            Err(_) => {
-                futures::task::current().notify();
+            Err(e) => {
+                match e {
+                    GetUrlError::IsEmpty => {
+                        let task=futures::task::current();
+                        thread::spawn(move||{
+                            thread::sleep(time::Duration::from_millis(2000));
+                            task.notify();
+                        });
+                    },
+                    _ => futures::task::current().notify(),
+                }
                 Ok(futures::Async::NotReady)
             },
         }
