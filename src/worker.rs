@@ -45,7 +45,7 @@ pub enum Work{
 }
 
 
-pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync::Arc<url_reservoir::UrlReservoir>, stats: sync::Arc<stats::Stats>, config: sync::Arc<config::Config>){
+pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync::Arc<url_reservoir::UrlReservoir>, stats: sync::Arc<stats::Stats>, config: sync::Arc<config::Config>, done_flag: sync::Arc<sync::atomic::AtomicBool>){
     let max_urls_per_html=config.max_urls_per_html;
     let max_url_hosts_per_html=config.max_url_hosts_per_html;
     let file_configs=config.files_to_gather.clone();
@@ -53,8 +53,8 @@ pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync
     drop(config);
 
     let re=regex::Regex::new("(?:href=|src=|url=)[\"']?([^\"' <>]*)").unwrap();
-    let mut url_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![1238967,4567654]);
-    let mut file_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![1238967,4567654]);
+    let mut url_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![1238967]);
+    let mut file_bloom_filter=bloom_filter::LargeBloomFilter::new(vec![4567654]);
     for work in work_receiver.iter(){
         match work {
             Work::Html(url,bytes) => {
@@ -92,4 +92,5 @@ pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync
         }
     }
     println!("Worker rerminated.");
+    done_flag.store(true, sync::atomic::Ordering::Relaxed);
 }

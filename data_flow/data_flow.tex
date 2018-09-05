@@ -12,6 +12,8 @@
 \tikzstyle{empty}=[];
 \tikzstyle{arrow} = [->, >=stealth, very thick]
 
+\node [entity_outside] at (4,5) (Ctrl-C) {Ctrl-C};
+\node [entity_thread] at (4,3) (Ctrl-C Handler) {Ctrl-C Handler};
 \node [entity_outside] at (0,5) (Config File) {Config File};
 \node [entity_struct] at (0,3) (Config) {Config};
 \node [entity_struct] at (0,0) (Reservoir) {Reservoir};
@@ -32,6 +34,8 @@
 \draw[arrow] (Reporter) -- node[anchor=center, left] {\scriptsize{write}} (Report);
 \draw[arrow] (Stats) -- node[anchor=center, above] {\scriptsize{ref}} (Reporter);
 \draw[arrow] (Config File) -- node[anchor=center, left] {\scriptsize{read}} (Config);
+\draw[arrow] (Ctrl-C) -- node[anchor=center, left] {\scriptsize{signal}} (Ctrl-C Handler);
+\draw[arrow] (Ctrl-C Handler) -- node[sloped, anchor=center, above] {\scriptsize{ref}} (Reservoir);
 
 \draw[arrow] (Worker) to [bend left=10] node[anchor=center, above] {\scriptsize{call}} (Bloom Filter);
 \draw[arrow] (Bloom Filter) to [bend left=10] node[anchor=center, below] {\scriptsize{return}} (Worker);
@@ -39,6 +43,7 @@
 \draw[arrow] (Reservoir) -- node[sloped, anchor=center, above] {\scriptsize{ref}} (Stats);
 \draw[arrow] (Client) -- node[sloped, anchor=center, above] {\scriptsize{ref}} (Stats);
 \draw[arrow] (Worker) to [bend left=45] node[anchor=center, above] {\scriptsize{ref}} (Stats);
+\draw[arrow] (Worker) to [bend left=45] node[anchor=center, above] {\scriptsize{flag}} (Reporter);
 
 
 \draw[arrow] (Config) to [bend left=20] node[anchor=center, right] {\scriptsize{clone}} (Worker);
