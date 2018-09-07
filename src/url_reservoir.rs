@@ -87,10 +87,17 @@ impl UrlReservoir {
         };
 
         let uri=match hyper::Uri::from_str(url.as_str()) {
-            Ok(uri) => uri,
             Err(_) => {
                 self.stats.urlreservoir_getuu_illformat.fetch_add(1, sync::atomic::Ordering::Relaxed);
                 return Err(GetUrlError::IllFormattedUrl);
+            },
+            Ok(uri) => {
+                if uri.authority_part().map(|auth| auth.as_str().contains("@")).unwrap_or(true){ //Gets around a bug in the http crate
+                    self.stats.urlreservoir_getuu_illformat.fetch_add(1, sync::atomic::Ordering::Relaxed);
+                    return Err(GetUrlError::IllFormattedUrl);
+                } else{
+                    uri
+                }
             },
         };
 
