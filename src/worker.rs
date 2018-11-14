@@ -61,8 +61,9 @@ pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync
                 stats.worker_got_html.fetch_add(1, sync::atomic::Ordering::Relaxed);
                 if let Ok(html_content)=String::from_utf8(bytes){
                     let mut urls=html_to_urls(&re, url, html_content, max_urls_per_html, max_url_hosts_per_html);
+                    urls.retain(|u| u.scheme()=="http");
                     urls.retain(|u| !url_bloom_filter.contains_add(u.as_str().as_bytes()));
-                    url_reservoir.add_urls(urls);
+                    url_reservoir.add_urls_if_len_lt_cap(urls);
                 }
             },
             Work::File(index, bytes) => {
@@ -70,14 +71,19 @@ pub fn run_worker(work_receiver: sync::mpsc::Receiver<Work>, url_reservoir: sync
 
                 let byte_slice=bytes.as_slice();
                 let file_config=&file_configs[index];
-                let file_count=&mut file_counts[index];
-                let filepath=format!("{}/{}{:05}.{}", file_config.folder_name, file_config.file_prefix, file_count, file_config.file_extension);
-                *file_count+=1;
-
+                if byte_slice.len()<file_config.min_size || byte_slice.len()>file_config.max_size{
+                    stats.worker_got_unwanted_file_size.fetch_add(1, sync::atomic::Ordering::Relaxed);
+                    continue;
+                }
                 if file_bloom_filter.contains_add(byte_slice){
                     stats.worker_got_repeated_file.fetch_add(1, sync::atomic::Ordering::Relaxed);
                     continue;
                 }
+
+                let file_count=&mut file_counts[index];
+                let filepath=format!("{}/{}{:05}.{}", file_config.folder_name, file_config.file_prefix, file_count, file_config.file_extension);
+                *file_count+=1;
+
                 use std::io::prelude::*;
                 match fs::File::create(filepath) {
                     Err(_) => stats.worker_write_file_error.fetch_add(1, sync::atomic::Ordering::Relaxed),

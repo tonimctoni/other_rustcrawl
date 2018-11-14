@@ -10,6 +10,8 @@ pub struct FileConfig {
     pub file_prefix: String,
     pub file_extension: String,
     pub folder_name: String,
+    pub min_size: usize,
+    pub max_size: usize,
 }
 
 #[derive(Deserialize)]
@@ -24,6 +26,7 @@ pub struct Config {
 
     pub max_urls_per_html: usize,
     pub max_url_hosts_per_html: usize,
+    pub max_urls_in_reservoir: usize,
 
     pub files_to_gather: Vec<FileConfig>,
 }
@@ -42,12 +45,14 @@ impl Config {
         assert!(config.buffer_size>0);
         assert!(config.max_urls_per_html>0);
         assert!(config.max_url_hosts_per_html>0);
+        assert!(config.max_urls_in_reservoir>0);
         assert!(config.files_to_gather.iter().all(|file_config| file_config.mimetype.len()>0));
         assert!(config.files_to_gather.iter().all(|file_config| file_config.file_extension.len()>0));
         assert!(config.files_to_gather.iter().all(|file_config| file_config.folder_name.len()>0));
 
         assert!(config.files_to_gather.iter().all(|file_config| !file_config.file_extension.contains("/")));
         assert!(config.files_to_gather.iter().all(|file_config| !file_config.file_prefix.contains("/")));
+        assert!(config.files_to_gather.iter().all(|file_config| file_config.min_size < file_config.max_size));
 
 
         sync::Arc::new(config)

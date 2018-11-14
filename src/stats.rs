@@ -24,6 +24,7 @@ pub struct Stats{
     pub worker_got_file: sync::atomic::AtomicUsize,
     pub worker_got_repeated_file: sync::atomic::AtomicUsize,
     pub worker_write_file_error: sync::atomic::AtomicUsize,
+    pub worker_got_unwanted_file_size: sync::atomic::AtomicUsize,
 }
 
 impl Stats {
@@ -50,6 +51,7 @@ impl Stats {
             worker_got_file: sync::atomic::AtomicUsize::new(0),
             worker_got_repeated_file: sync::atomic::AtomicUsize::new(0),
             worker_write_file_error: sync::atomic::AtomicUsize::new(0),
+            worker_got_unwanted_file_size: sync::atomic::AtomicUsize::new(0),
         })
     }
 }
@@ -80,5 +82,11 @@ impl fmt::Display for Stats {
         .and_then(|_|write!(f, "----got file: {}\n", self.worker_got_file.load(sync::atomic::Ordering::Relaxed)))
         .and_then(|_|write!(f, "----got repeated file: {}\n", self.worker_got_repeated_file.load(sync::atomic::Ordering::Relaxed)))
         .and_then(|_|write!(f, "----got write file error: {}\n", self.worker_write_file_error.load(sync::atomic::Ordering::Relaxed)))
+        .and_then(|_|write!(f, "----got unwanted file size: {}\n", self.worker_got_unwanted_file_size.load(sync::atomic::Ordering::Relaxed)))
+        .and_then(|_|write!(f, "----saved file: {}\n", self.worker_got_file.load(sync::atomic::Ordering::Relaxed)
+            -self.worker_got_repeated_file.load(sync::atomic::Ordering::Relaxed)
+            -self.worker_write_file_error.load(sync::atomic::Ordering::Relaxed)
+            -self.worker_got_unwanted_file_size.load(sync::atomic::Ordering::Relaxed)
+            ))
     }
 }

@@ -12,7 +12,6 @@ use std::thread;
 use std::time;
 
 
-const URL_RESERVOIR_STARTING_CAPACITY: usize = 1<<20;
 pub struct UrlReservoir {
     url_deque: sync::Mutex<Option<VecDeque<url::Url>>>,
     stats: sync::Arc<stats::Stats>,
@@ -26,9 +25,9 @@ enum GetUrlError {
 }
 
 impl UrlReservoir {
-    pub fn new(stats: sync::Arc<stats::Stats>) -> sync::Arc<UrlReservoir>{
+    pub fn new(stats: sync::Arc<stats::Stats>, capacity: usize) -> sync::Arc<UrlReservoir>{
         sync::Arc::new(UrlReservoir{
-            url_deque: sync::Mutex::new(Some(VecDeque::with_capacity(URL_RESERVOIR_STARTING_CAPACITY))),
+            url_deque: sync::Mutex::new(Some(VecDeque::with_capacity(capacity))),
             stats: stats,
         })
     }
@@ -50,6 +49,26 @@ impl UrlReservoir {
             Err(e) => panic!(format!("add_html_urls tried to get a poisoned lock: {:?}", e)),
             Ok(mut url_deque) => {
                 if let Some(url_deque)=url_deque.as_mut(){
+                    url_deque.extend(url_vec);
+                    self.stats.urlreservoir_size.store(url_deque.len(), sync::atomic::Ordering::Relaxed);
+                }
+            },
+        }
+
+        self.stats.urlreservoir_add_addedurls.fetch_add(url_vec_len, sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn add_urls_if_len_lt_cap(&self, url_vec: Vec<url::Url>){
+        self.stats.urlreservoir_add_calls.fetch_add(1, sync::atomic::Ordering::Relaxed);
+
+        let url_vec_len=url_vec.len();
+        match self.url_deque.lock(){
+            Err(e) => panic!(format!("add_html_urls tried to get a poisoned lock: {:?}", e)),
+            Ok(mut url_deque) => {
+                if let Some(url_deque)=url_deque.as_mut(){
+                    if url_deque.len()+url_vec_len>=url_deque.capacity(){
+                        return;
+                    }
                     url_deque.extend(url_vec);
                     self.stats.urlreservoir_size.store(url_deque.len(), sync::atomic::Ordering::Relaxed);
                 }

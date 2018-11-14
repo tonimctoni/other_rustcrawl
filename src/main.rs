@@ -26,7 +26,7 @@ fn main() {
     let config=config::Config::get_or_panic("config.json");
     let stats=stats::Stats::new();
 
-    let url_reservoir=url_reservoir::UrlReservoir::new(stats.clone());
+    let url_reservoir=url_reservoir::UrlReservoir::new(stats.clone(), config.max_urls_in_reservoir);
     url_reservoir.add_urls(config.initial_urls.iter().map(|url| url::Url::parse(url).unwrap()).collect());
 
     let maybe_url_reservoir2=sync::Mutex::new(Some(url_reservoir.clone()));
