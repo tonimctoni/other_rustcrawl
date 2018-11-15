@@ -66,7 +66,7 @@ impl UrlReservoir {
             Err(e) => panic!(format!("add_html_urls tried to get a poisoned lock: {:?}", e)),
             Ok(mut url_deque) => {
                 if let Some(url_deque)=url_deque.as_mut(){
-                    if url_deque.len()+url_vec_len>=url_deque.capacity(){
+                    if url_deque.len()+url_vec_len>=url_deque.capacity()-1{
                         return;
                     }
                     url_deque.extend(url_vec);
