@@ -41,6 +41,19 @@ impl UrlReservoir {
         }
     }
 
+    // fn get_len_capacity(&self) -> (usize, usize){
+    //     match self.url_deque.lock(){
+    //         Err(e) => (panic!(format!("get_len_capacity tried to get a poisoned lock: {:?}", e))),
+    //         Ok(mut url_deque) => {
+    //             if let Some(url_deque)=url_deque.as_mut(){
+    //                 (url_deque.len(), url_deque.capacity())
+    //             } else{
+    //                 panic!("get_len_capacity called on None deque");
+    //             }
+    //         },
+    //     }
+    // }
+
     pub fn add_urls(&self, url_vec: Vec<url::Url>){
         self.stats.urlreservoir_add_calls.fetch_add(1, sync::atomic::Ordering::Relaxed);
 
@@ -63,10 +76,11 @@ impl UrlReservoir {
 
         let url_vec_len=url_vec.len();
         match self.url_deque.lock(){
-            Err(e) => panic!(format!("add_html_urls tried to get a poisoned lock: {:?}", e)),
+            Err(e) => panic!(format!("add_urls_if_len_lt_cap tried to get a poisoned lock: {:?}", e)),
             Ok(mut url_deque) => {
                 if let Some(url_deque)=url_deque.as_mut(){
-                    if url_deque.len()+url_vec_len>=url_deque.capacity()-1{
+                    // If the capacity would be exceeded, which would trigger a doubling of the buffer: return early
+                    if url_deque.len()+url_vec_len>=url_deque.capacity(){
                         return;
                     }
                     url_deque.extend(url_vec);
@@ -81,6 +95,7 @@ impl UrlReservoir {
     fn try_get_url_and_uri(&self) -> Result<(url::Url, hyper::Uri), GetUrlError>{
         self.stats.urlreservoir_getuu_calls.fetch_add(1, sync::atomic::Ordering::Relaxed);
 
+        // Get one url if deque is not empty, none otherwise; also get deque length
         let (popped_url, url_deque_len)=match self.url_deque.try_lock() {
             Ok(mut maybe_url_deque) => {
                 match maybe_url_deque.as_mut() {
@@ -97,6 +112,7 @@ impl UrlReservoir {
         };
         self.stats.urlreservoir_size.store(url_deque_len, sync::atomic::Ordering::Relaxed);
 
+        // Unwrap url if one was popped from deque; return early otherwise
         let url=match popped_url {
             Some(url) => url,
             None => {
@@ -105,6 +121,7 @@ impl UrlReservoir {
             },
         };
 
+        // Produce uri from url; return early on any error
         let uri=match hyper::Uri::from_str(url.as_str()) {
             Err(_) => {
                 self.stats.urlreservoir_getuu_illformat.fetch_add(1, sync::atomic::Ordering::Relaxed);
@@ -171,3 +188,31 @@ impl Stream for UrlReservoirUrlUriStream {
         }
     }
 }
+
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use std::str;
+
+//     #[test]
+//     fn test_add_urls_if_len_lt_cap() {
+//         for capacity in 1..100{
+//             let stats=stats::Stats::new();
+//             let url_reservoir=UrlReservoir::new(stats.clone(), capacity);
+//             let (_,capacity)=url_reservoir.get_len_capacity();
+//                 println!("asd");
+
+//             for step in 1..(capacity+1){
+
+//                 for i in 0..(capacity/step+1){
+//                     let new_urls=vec![url::Url::parse("http://www.site.com").unwrap();step];
+//                     url_reservoir.add_urls_if_len_lt_cap(new_urls);
+//                     let (_,new_capacity)=url_reservoir.get_len_capacity();
+//                     println!("capacity: {}, new_capacity: {}, step: {}, i: {}", capacity, new_capacity, step, i);
+//                     assert!(new_capacity==capacity);
+//                 }
+//             }
+//         }
+//     }
+// }

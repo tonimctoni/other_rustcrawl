@@ -7,7 +7,9 @@ use hyper;
 use tokio_core;
 use futures;
 use hyper::rt::{Future, Stream};
+use hyper_tls;
 
+use std::thread;
 use std::sync;
 use std::time;
 
@@ -27,10 +29,73 @@ impl From<hyper::error::Error> for RunClientError{
 }
 
 
-pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_sender: sync::mpsc::Sender<worker::Work>, stats: sync::Arc<stats::Stats>, config: sync::Arc<config::Config>){
-    let timeout_milliseconds=config.timeout;
+type ArcUrlReservoir = sync::Arc<url_reservoir::UrlReservoir>;
+type WorkSender = sync::mpsc::Sender<worker::Work>;
+type ArcStats = sync::Arc<stats::Stats>;
+type ArcConfig = sync::Arc<config::Config>;
+
+fn build_http_client(dns_threads: usize) -> sync::Arc<hyper::Client<hyper::client::HttpConnector>>{
+    let connector=hyper::client::HttpConnector::new(dns_threads);
+    let client=hyper::Client::builder()
+        .keep_alive(false)
+        .build::<_,hyper::Body>(connector);
+
+    sync::Arc::new(client)
+}
+
+fn build_https_client(dns_threads: usize) -> sync::Arc<hyper::Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>>{
+    let connector=hyper_tls::HttpsConnector::new(dns_threads).unwrap();
+    let client=hyper::Client::builder()
+        .keep_alive(false)
+        .build::<_,hyper::Body>(connector);
+
+    sync::Arc::new(client)
+}
+
+
+pub fn spawn_clients(url_reservoir: ArcUrlReservoir, work_sender: WorkSender, stats: ArcStats, config: ArcConfig){
+    if config.enable_https{
+        let client=build_https_client(config.dns_threads);
+
+        for _ in 0..(config.client_threads-1){
+            let url_reservoir_stream=url_reservoir::UrlReservoirUrlUriStream::new(url_reservoir.clone());
+            let work_sender2=work_sender.clone();
+            let client2=client.clone();
+            let stats2=stats.clone();
+            let config2=config.clone();
+            thread::spawn(move|| run_client(client2, url_reservoir_stream, work_sender2, stats2, config2));
+        }
+
+        let url_reservoir_stream=url_reservoir::UrlReservoirUrlUriStream::new(url_reservoir);
+        thread::spawn(move|| run_client(client, url_reservoir_stream, work_sender, stats, config));
+    } else{
+        let client=build_http_client(config.dns_threads);
+
+        for _ in 0..(config.client_threads-1){
+            let url_reservoir_stream=url_reservoir::UrlReservoirUrlUriStream::new(url_reservoir.clone());
+            let work_sender2=work_sender.clone();
+            let client2=client.clone();
+            let stats2=stats.clone();
+            let config2=config.clone();
+            thread::spawn(move|| run_client(client2, url_reservoir_stream, work_sender2, stats2, config2));
+        }
+
+        let url_reservoir_stream=url_reservoir::UrlReservoirUrlUriStream::new(url_reservoir);
+        thread::spawn(move|| run_client(client, url_reservoir_stream, work_sender, stats, config));
+    }
+
+}
+
+
+pub fn run_client<C>(client: sync::Arc<hyper::Client<C, hyper::Body>> ,urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_sender: WorkSender, stats: ArcStats, config: ArcConfig)
+where C: hyper::client::connect::Connect + Sync + 'static,
+      C::Transport: 'static,
+      C::Future: 'static,
+
+{
+    let timeout_milliseconds=config.request_timeout;
     let max_body_len=config.max_body_len;
-    let buffer_size=config.buffer_size;
+    let buffer_size=config.client_buffer_size;
     let desired_mimetypes: Vec<String>=config.files_to_gather.iter().map(|file_config| file_config.mimetype.clone()).collect();
     let desired_mimetypes=sync::Arc::new(desired_mimetypes);
     drop(config);
@@ -38,8 +103,6 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let handle = core.handle();
 
-    // let client=hyper::Client::new();
-    let client=hyper::Client::builder().keep_alive(false).build_http::<hyper::Body>();
     let futs=urluri_stream
         .map(move |urluri|{
             let desired_mimetypes=desired_mimetypes.clone();
@@ -53,6 +116,7 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
                     File(usize),
                 }
 
+                // Get content type if it is a desired one, None otherwise
                 let content_type={
                     response
                         .headers()
@@ -80,6 +144,8 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
                 } else {
                     futures::future::err(RunClientError::UnwantedFile)
                 }.and_then(move |_|{
+
+                    // Concatenate all chunks of the file that is being received
                     response
                         .into_body()
                         .from_err::<RunClientError>()
@@ -102,6 +168,8 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
             })
             .select2(tokio_core::reactor::Timeout::new(time::Duration::from_millis(timeout_milliseconds), &handle).unwrap())
             .then(|result_either|{
+
+                // Prepare work if response to request is useful, otherwise prepare error; wrap in Ok in any case so it can get processed in the for_each
                 match result_either {
                     Ok(either) => {
                         match either {
@@ -121,12 +189,16 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
         .buffer_unordered(buffer_size)
         .for_each(move |result_work|{
             match result_work {
+
+                // If the response yielded a useful file, send it to worker
                 Ok(work) => {
                     stats.client_work_sent.fetch_add(1, sync::atomic::Ordering::Relaxed);
                     if let Err(e)=work_sender.send(work){
                         println!("Error: {:?}", e);
                     }
                 },
+
+                // On error inform stats for periodic report
                 Err(e) => {
                     match e {
                         RunClientError::HyperError(_) => stats.client_hyper_error.fetch_add(1, sync::atomic::Ordering::Relaxed),
@@ -140,7 +212,6 @@ pub fn run_client(urluri_stream: url_reservoir::UrlReservoirUrlUriStream, work_s
             Ok(())
         });
 
-    // hyper::rt::run(futs);
     let core_result=core.run(futs);
     println!("Tokio core result: {:?}", core_result);
     println!("Client rerminated.");
